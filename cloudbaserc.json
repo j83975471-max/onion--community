@@ -1,0 +1,32 @@
+{
+  "envId": "yccommunitytest",
+  "framework": {
+    "name": "onion-app",
+    "plugins": {
+      "client": {
+        "use": "@cloudbase/framework-plugin-website",
+        "inputs": {
+          "buildCommand": "npm run build:client",
+          "outputPath": "dist",
+          "cloudPath": "/"
+        }
+      },
+      "server": {
+        "use": "@cloudbase/framework-plugin-node",
+        "inputs": {
+          "name": "onion-server",
+          "path": "/api",
+          "entry": "server.ts",
+          "buildCommand": "npm install",
+          "functionOptions": {
+            "timeout": 30,
+            "memorySize": 256,
+            "envVariables": {
+              "NODE_ENV": "production"
+            }
+          }
+        }
+      }
+    }
+  }
+}
