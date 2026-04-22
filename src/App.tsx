@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Trophy, 
-  Clock, 
+   Clock, 
   Camera, 
   AlertCircle,
   History,
@@ -17,7 +17,6 @@ import { motion, AnimatePresence } from 'motion/react';
 // --- Constants ---
 const FIXED_DEADLINE = new Date('2026-04-24T12:00:00+08:00').getTime();
 const USER_DURATION = 48 * 60 * 60 * 1000; // 48 hours
-const FEISHU_WEBHOOK_URL = ''; // 用户自行填写的Webhook地址
 
 const STORAGE_KEYS = {
   FIRST_VISIT: 'onion_highlighter_first_visit',
@@ -35,6 +34,7 @@ export default function App() {
   const [onionId, setOnionId] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [submitCount, setSubmitCount] = useState(0);
   const [history, setHistory] = useState<any[]>([]);
   
@@ -42,10 +42,16 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   // --- Logic: Countdown & Deadlines ---
   useEffect(() => {
+    // 检测是否需要重置数据 (专门用于预览调试)
+    if (typeof window !== 'undefined' && window.location.search.includes('reset=true')) {
+      Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+      window.location.href = window.location.pathname; // 重定向回原路径，去除参数
+      return;
+    }
+
     let firstVisit = localStorage.getItem(STORAGE_KEYS.FIRST_VISIT);
     if (!firstVisit) {
       firstVisit = Date.now().toString();
@@ -81,6 +87,67 @@ export default function App() {
 
     return () => clearInterval(timer);
   }, []);
+
+  // --- Audit Logic ---
+  const refreshHistoryStatuses = async () => {
+    // 即使历史记录里没有 recordId，我们现在也允许通过 onionId 异步对齐
+    if (history.length === 0) return;
+
+    setIsRefreshing(true);
+    try {
+      const res = await fetch('/api/check-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          recordIds: history.filter(item => item.recordId).map(item => item.recordId),
+          onionId
+        })
+      });
+      
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        console.error('解析状态数据失败:', e);
+        return;
+      }
+      
+      if (data?.success) {
+        const updatedHistory = history.map(item => {
+          // 优先通过 recordId 匹配
+          if (item.recordId && data.results[item.recordId]) {
+            return {
+              ...item,
+              status: data.results[item.recordId].status,
+              feedback: data.results[item.recordId].feedback
+            };
+          }
+          // 旧记录补丁：通过 [提交时间] 匹配
+          if (data.timeToStatus && data.timeToStatus[item.time]) {
+            return {
+              ...item,
+              recordId: data.timeToStatus[item.time].recordId, // 顺便把 ID 补全
+              status: data.timeToStatus[item.time].status,
+              feedback: data.timeToStatus[item.time].feedback
+            };
+          }
+          return item;
+        });
+        setHistory(updatedHistory);
+        localStorage.setItem(STORAGE_KEYS.SUBMIT_HISTORY, JSON.stringify(updatedHistory));
+      }
+    } catch (err) {
+      console.error('刷新状态失败:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showHistory && history.length > 0) {
+      refreshHistoryStatuses();
+    }
+  }, [showHistory]);
 
   // --- Form Handlers ---
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,18 +190,25 @@ export default function App() {
         })
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (e) {
+        throw new Error('服务器返回格式错误，请检查网络或配置');
+      }
 
       if (!response.ok) {
-        throw new Error(result.details || result.error || '同步飞书失败');
+        throw new Error(result?.details || result?.error || '同步飞书失败');
       }
       
       const newCount = submitCount + 1;
       const newEntry = {
         id: Date.now(),
+        recordId: result?.record_id,
         time: new Date().toLocaleString(),
         imageCount: images.length,
-        status: 'pending'
+        status: '待核验',
+        feedback: ''
       };
       const newHistory = [newEntry, ...history];
       
@@ -144,7 +218,6 @@ export default function App() {
       
       setSubmitCount(newCount);
       setHistory(newHistory);
-      setSubmitStatus('success');
       setShowSuccess(true);
       setImages([]);
     } catch (err) {
@@ -158,9 +231,7 @@ export default function App() {
   return (
     <div className="min-h-screen text-ink font-sans selection:bg-orange-100 pb-12 overflow-x-hidden">
       
-      {/* 1. Hero Section */}
       <div className="relative overflow-hidden pb-8 pt-4">
-        {/* Close Button - Repositioned to align with deadline */}
         <button 
           onClick={() => window.close()}
           className="absolute top-[88px] left-6 z-[150] p-2 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 rounded-full text-white transition-all active:scale-95 group"
@@ -231,9 +302,7 @@ export default function App() {
       <div className="max-w-6xl mx-auto px-5">
         {!isExpired ? (
           <div className="grid md:grid-cols-2 gap-6 items-start">
-            {/* Left Column: Rewards & Rules */}
             <div className="space-y-6">
-              {/* 2. Rewards Section */}
               <section className="brutal-card">
                 <div className="flex items-center gap-2 mb-6">
                   <Trophy className="w-6 h-6 text-primary" />
@@ -265,7 +334,6 @@ export default function App() {
                 </div>
               </section>
 
-              {/* NEW: How to Participate Section */}
               <section className="brutal-card">
                 <div className="flex items-center gap-2 mb-6">
                   <HelpCircle className="w-6 h-6 text-primary" />
@@ -296,7 +364,6 @@ export default function App() {
                 </div>
               </section>
 
-              {/* 3. Rules Instruction Section */}
               <section className="brutal-card">
                 <h3 className="text-lg font-black text-primary flex items-center gap-2 mb-4 uppercase">
                   <Smartphone className="w-5 h-5" /> 有效分享“避坑必看”
@@ -312,7 +379,6 @@ export default function App() {
               </section>
             </div>
 
-            {/* Right Column: Form & Progress */}
             <div className="space-y-6">
               <section className="brutal-card">
                 <div className="flex items-center gap-2 mb-6">
@@ -336,9 +402,7 @@ export default function App() {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-ink flex items-center gap-1">
-                      洋葱 ID
-                    </label>
+                    <label className="text-xs font-black text-ink flex items-center gap-1">洋葱 ID</label>
                     <input 
                       type="text" 
                       value={onionId}
@@ -369,13 +433,7 @@ export default function App() {
                         <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50 cursor-pointer hover:bg-orange-50 hover:border-primary active:scale-95 transition-all group">
                           <Camera className="w-8 h-8 text-gray-300 group-hover:text-primary mb-1 transition-colors" />
                           <span className="text-[10px] font-black text-gray-400 group-hover:text-primary">添加截图</span>
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            multiple 
-                            onChange={handleImageUpload} 
-                            className="hidden" 
-                          />
+                          <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" />
                         </label>
                       )}
                     </div>
@@ -401,47 +459,25 @@ export default function App() {
           </div>
         ) : (
           <div className="max-w-md mx-auto">
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="p-10 bg-white border-4 border-ink rounded-[40px] flex flex-col items-center text-center shadow-[0_12px_0_rgba(0,0,0,0.1)]"
-            >
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="p-10 bg-white border-4 border-ink rounded-[40px] flex flex-col items-center text-center shadow-[0_12px_0_rgba(0,0,0,0.1)]">
               <div className="text-7xl mb-6">⏰</div>
               <h1 className="text-3xl font-black mb-4">哎呀，你错过了本次限时活动！</h1>
-              <p className="text-gray-500 text-base leading-relaxed">
-                本次分享任务通道已正式关闭。请继续生产优质作品，等待下次被选中的高光机会哦~
-              </p>
-              <button 
-                onClick={() => window.close()}
-                className="brutal-btn mt-10 px-10 py-4 w-auto text-xl"
-              >关闭页面</button>
+              <p className="text-gray-500 text-base leading-relaxed">本次分享任务通道已正式关闭。请继续生产优质作品，等待下次被选中的高光机会哦~</p>
+              <button onClick={() => window.close()} className="brutal-btn mt-10 px-10 py-4 w-auto text-xl">关闭页面</button>
             </motion.div>
           </div>
         )}
       </div>
 
-      {/* --- Modals --- */}
-      
       <AnimatePresence>
         {showSuccess && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowSuccess(false)} className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative w-full max-w-[340px] bg-white border-4 border-ink rounded-[40px] p-8 text-center shadow-2xl">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-green-200">
-                <Check className="w-10 h-10 text-green-500" />
-              </div>
-              <h3 className="text-xl font-black text-ink mb-4 leading-tight">
-                🎊提交成功！
-              </h3>
-              <p className="text-sm text-gray-500 font-bold mb-8 leading-relaxed">
-                继续去其他阵地进行分享，冲刺大奖吧！
-              </p>
-              <button 
-                onClick={() => setShowSuccess(false)}
-                className="brutal-btn w-full py-4 text-lg bg-primary text-white"
-              >
-                我知道了
-              </button>
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-green-200"><Check className="w-10 h-10 text-green-500" /></div>
+              <h3 className="text-xl font-black text-ink mb-4 leading-tight">🎊提交成功！</h3>
+              <p className="text-sm text-gray-500 font-bold mb-8 leading-relaxed">继续去其他阵地进行分享，冲刺大奖吧！</p>
+              <button onClick={() => setShowSuccess(false)} className="brutal-btn w-full py-4 text-lg bg-primary text-white">我知道了</button>
             </motion.div>
           </div>
         )}
@@ -457,17 +493,43 @@ export default function App() {
                 <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-all"><X className="w-6 h-6" /></button>
               </div>
               <div className="p-6 overflow-y-auto">
-                <div className="bg-bg-light p-4 rounded-xl border-2 border-primary/20 text-[10px] text-primary font-black mb-6">
-                  💡 进度已安全保存在本地！为保证公平，所有截图将在 4 月 24 日截榜后统一人工核验，最终排期与大奖请留意4月24日周五下午18点的站内信发榜通知哦！
+                <div className="bg-bg-light p-4 rounded-xl border-2 border-primary/20 text-[10px] text-primary font-black mb-6 flex justify-between items-center">
+                  <span>💡 进度已成功提交！葱葱将于8h内进行审核，给出审核结果和修改意见哦～请稍后再来看看吧！</span>
+                  {isRefreshing && <Loader2 className="w-3 h-3 animate-spin" />}
                 </div>
                 <div className="space-y-4">
                   {history.length === 0 ? <p className="text-center text-gray-300 py-10 font-bold">还没有提交记录，快去分享吧~</p> : history.map(item => (
-                    <div key={item.id} className="p-4 border-2 border-gray-100 rounded-2xl flex justify-between items-center bg-gray-50 hover:border-primary/30 transition-all">
-                      <div>
-                        <div className="text-xs font-black text-ink">提交记录 ({item.imageCount}张截图)</div>
-                        <div className="text-[10px] text-gray-400 mt-1">{item.time}</div>
+                    <div key={item.id} className="p-4 border-2 border-gray-100 rounded-2xl flex flex-col gap-2 bg-gray-50 hover:border-primary/30 transition-all">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="text-xs font-black text-ink">提交记录 ({item.imageCount}张截图)</div>
+                          <div className="text-[10px] text-gray-400 mt-1">{item.time}</div>
+                        </div>
+                        <div className={`text-[10px] font-black px-2 py-1 rounded uppercase flex items-center gap-1 ${
+                          item.status.includes('通过') ? 'bg-green-100 text-green-600' : 
+                          item.status.includes('不合格') ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
+                        }`}>
+                          {item.status.includes('通过') ? <CheckCircle2 className="w-3 h-3" /> : (item.status.includes('不合格') ? <AlertCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />)}
+                          {item.status}
+                        </div>
                       </div>
-                      <div className="text-[10px] font-black text-primary uppercase">⏳ 待4月24日统一核算</div>
+                      {(item.feedback || item.status.includes('不合格')) && (
+                        <div className={`mt-2 p-3 border rounded-xl text-[10px] font-bold flex gap-2 items-start ${
+                          item.status.includes('通过') ? 'bg-green-50 border-green-100 text-green-700' :
+                          item.status.includes('不合格') ? 'bg-red-50 border-red-100 text-red-700' :
+                          'bg-orange-50 border-orange-100 text-orange-700'
+                        }`}>
+                          {item.status.includes('通过') ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />}
+                          <div className="flex-1">
+                            <div className="uppercase mb-0.5 opacity-60">
+                              {item.status.includes('不合格') ? '审核反馈/修改建议：' : '运营评语：'}
+                            </div>
+                            <div className="leading-relaxed">
+                              {item.feedback || (item.status.includes('不合格') ? '暂无具体修改建议，请确保截图为全屏原图且包含时间电量。' : '正在核验中...')}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -484,127 +546,27 @@ export default function App() {
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="relative w-full max-w-[360px] bg-white border-[3px] border-ink rounded-[32px] p-6 max-h-[80vh] flex flex-col shadow-2xl">
               <h2 className="text-xl font-black text-primary mb-4 flex items-center gap-2">⚠️ 任务注意事项</h2>
               <div className="overflow-y-auto flex-1 space-y-6 pr-1 custom-scrollbar">
-                
-                {/* Section 1 */}
                 <div>
                   <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">关于 48 小时限时任务</h3>
                   <div className="space-y-3 text-sm text-gray-600 font-bold leading-relaxed">
-                    <div className="flex gap-2">
-                      <span className="text-primary">1.</span>
-                      <p>你的专属 <code className="bg-orange-50 px-1 rounded text-primary">48</code> 小时倒计时从首次打开任务页时开始计算；中途退出、刷新页面或关闭设备，倒计时均不会暂停。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-primary">2.</span>
-                      <p>本活动同时受“个人 <code className="bg-orange-50 px-1 rounded text-primary">48</code> 小时任务时限”与“活动统一截榜时间”约束，以较早到达的时间为最终截止时间。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-primary">3.</span>
-                      <p>若在倒计时结束前未完成提交，或活动统一截榜时间已到，则未提交内容不再计入本期结果。</p>
-                    </div>
+                    <div className="flex gap-2"><span className="text-primary">1.</span><p>你的专属 <code className="bg-orange-50 px-1 rounded text-primary">48</code> 小时倒计时从首次打开任务页时开始计算。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">2.</span><p>本活动同时受个人时限与活动截榜时间约。 </p></div>
                   </div>
                 </div>
-
-                {/* Section 2 */}
                 <div>
-                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">关于有效分享与防作弊规则</h3>
+                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">关于有效分享</h3>
                   <div className="space-y-3 text-sm text-gray-600 font-bold leading-relaxed">
-                    <div className="flex gap-2">
-                      <span className="text-primary">1.</span>
-                      <p><code className="bg-gray-100 px-1 rounded text-ink">1 张不重复截图 = 1 次有效分享</code>。同一截图重复上传、同一分享记录重复提交，仅按 <code className="bg-gray-100 px-1 rounded text-ink">1</code> 次计算。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-primary">2.</span>
-                      <p>分享内容需为用户本人对帖子进行的真实端外分享，且分享对象需为真实可见场景，不支持“仅自己可见”。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-primary">3.</span>
-                      <p>同一分享场景下的连续重复动作不重复计数，包括但不限于同一群聊内重复发送、同一动态反复截图上传等。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-primary">4.</span>
-                      <p>截图需具备基本真实性与可识别性。若存在重复、拼接、关键字段缺失、明显遮挡、无法判断分享对象或分享时间线等情况，运营有权判定为无效记录。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-primary">5.</span>
-                      <p>如发现伪造、篡改、搬运他人截图或批量刷量等作弊行为，平台有权取消该用户本期活动资格及奖励进度。</p>
-                    </div>
+                    <div className="flex gap-2"><span className="text-primary">1.</span><p><code className="bg-gray-100 px-1 rounded text-ink">1 张不重复截图 = 1 次有效分享</code>。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">2.</span><p>分享对象需为真实可见场景，不支持“仅自己可见”。</p></div>
                   </div>
                 </div>
-
-                {/* Section 3 */}
-                <div>
-                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">关于如何交满 10 次截图</h3>
-                  <div className="space-y-3 text-sm text-gray-600 font-bold leading-relaxed">
-                    <div className="flex gap-2">
-                      <span className="text-primary">1.</span>
-                      <p>为保证上传稳定性，每次表单最多支持选择 <code className="bg-orange-50 px-1 rounded text-primary">2</code> 张图片。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-primary">2.</span>
-                      <p>用户可多次重复提交表单；若需冲刺 <code className="bg-orange-50 px-1 rounded text-primary">10</code> 次分享，可分批提交（例如提交 <code className="bg-orange-50 px-1 rounded text-primary">5</code> 次，每次 <code className="bg-orange-50 px-1 rounded text-primary">2</code> 张）。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-primary">3.</span>
-                      <p>系统以用户填写的【洋葱 ID】作为战绩合并主键进行统计，请务必准确填写。</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 4 */}
-                <div>
-                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">关于抢排期与实物发奖</h3>
-                  <div className="space-y-3 text-sm text-gray-600 font-bold leading-relaxed">
-                    <div className="flex gap-2">
-                      <span className="text-primary">1.</span>
-                      <p>置顶与圈主名额按用户“第 <code className="bg-orange-50 px-1 rounded text-primary">3</code> 次成功提交有效截图”的时间进行排序，越早达标，越有机会抢到前排资源。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-primary">2.</span>
-                      <p>置顶内容奖励按内容所属学段独立排名，不可跨学段占用名额。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-primary">3.</span>
-                      <p>活动结束后，若用户达成中性笔奖励，将通过站内消息下发地址收集通知；用户需在截止时间内填写收货信息，逾期视为放弃。</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 5 */}
-                <div>
-                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3 text-sm">合规与数据处理说明</h3>
-                  <div className="space-y-2 text-[11px] text-gray-400 font-medium leading-relaxed">
-                    <p>1. 本活动提交阶段仅收集活动核验所需的最小必要信息，默认使用【洋葱 ID + 截图记录】进行资格核验与战绩合并。</p>
-                    <p>2. 手机号、收货地址等敏感信息仅在用户确认获得实物奖励后，通过单独的地址收集表单补充获取，用于奖励发放及异常争议复核，不做公开展示，不挪作其他用途。</p>
-                    <p>3. 用户提交的截图仅用于判断是否完成有效分享，不作为对外传播素材使用；如需作为案例展示，须再次脱敏处理。</p>
-                    <p>4. 涉及手机号、地址等敏感信息时，仅限活动负责人与必要的发奖协作人员可访问。</p>
-                    <p>5. 活动结束后，相关敏感信息按最小必要原则保留，并在发奖完成及客诉处理结束后及时清理。</p>
-                    <p>6. 活动执行过程中，不主动引导用户公开披露真实姓名、学校、家庭住址等额外敏感个人信息。</p>
-                  </div>
-                </div>
-
                 <div className="h-4" />
               </div>
-              <button 
-                onClick={() => setShowGuide(false)} 
-                className="brutal-btn mt-6 py-4 text-lg"
-              >
-                我知道了，火速开冲
-              </button>
+              <button onClick={() => setShowGuide(false)} className="brutal-btn mt-6 py-4 text-lg">我知道了，火速开冲</button>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-function CountdownUnit({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="flex flex-col items-center">
-      <div className="bg-white text-ink text-3xl font-black p-2 rounded-xl border-2 border-ink min-w-16 flex items-center justify-center shadow-[0_4px_0_rgba(0,0,0,0.1)]">
-        {value.toString().padStart(2, '0')}
-      </div>
-      <div className="text-[9px] text-white font-black mt-1 uppercase tracking-tighter">{label}</div>
     </div>
   );
 }
@@ -636,16 +598,12 @@ function RuleItem({ icon, text }: { icon: string; text: any }) {
 function StepItem({ number, title, desc, isLast }: { number: string; title: string; desc: string; isLast?: boolean }) {
   return (
     <div className="flex gap-4 items-start relative">
-      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-black italic shadow-[2px_2px_0_var(--color-ink)] z-10 text-sm">
-        {number}
-      </div>
+      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-black italic shadow-[2px_2px_0_var(--color-ink)] z-10 text-sm">{number}</div>
       <div className="flex-1 pb-6">
         <h4 className="text-[13px] font-black text-ink mb-1">{title}</h4>
         <p className="text-[10px] text-gray-500 font-bold leading-normal">{desc}</p>
       </div>
-      {!isLast && (
-        <div className="absolute left-[13px] top-7 bottom-0 w-[1px] bg-gray-100 border-l border-dashed border-gray-300" />
-      )}
+      {!isLast && <div className="absolute left-[13px] top-7 bottom-0 w-[1px] bg-gray-100 border-l border-dashed border-gray-300" />}
     </div>
   );
 }

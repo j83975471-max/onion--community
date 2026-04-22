@@ -82,7 +82,8 @@ export async function onRequestPost(context) {
         fields: {
           "洋葱ID": onionId,
           "提交时间": timestamp,
-          "分享截图": fileTokens
+          "分享截图": fileTokens,
+          "审核状态": "待核验"
         }
       }),
     });
@@ -90,7 +91,10 @@ export async function onRequestPost(context) {
     const recordData = await recordRes.json();
     if (recordData.code !== 0) throw new Error(`写入记录失败: ${recordData.msg}`);
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      record_id: recordData.data.record.record_id 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
 
