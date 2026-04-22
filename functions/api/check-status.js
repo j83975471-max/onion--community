@@ -33,7 +33,9 @@ export async function onRequestPost(context) {
     
     // 如果有 onionId，我们按用户 ID 查全量记录，这样能覆盖旧数据
     if (onionId) {
-      const filter = encodeURIComponent(`CurrentValue.[洋葱ID]=="${onionId}"`);
+      // 飞书语法加固：使用更通用的 [字段名]="值" 格式，并确保 onionId 存在
+      const safeOnionId = String(onionId).trim();
+      const filter = encodeURIComponent(`[洋葱ID]="${safeOnionId}"`);
       url += `?filter=${filter}&page_size=100`;
     } else if (recordIds && recordIds.length > 0) {
       const queryParams = new URLSearchParams();

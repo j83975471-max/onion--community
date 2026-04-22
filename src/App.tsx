@@ -88,10 +88,10 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // --- Audit Logic ---
   const refreshHistoryStatuses = async () => {
-    // 即使历史记录里没有 recordId，我们现在也允许通过 onionId 异步对齐
-    if (history.length === 0) return;
+    // 获取最新的 onionId，防止 state 还没同步
+    const currentOnionId = onionId || localStorage.getItem(STORAGE_KEYS.USER_ID) || '';
+    if (history.length === 0 || !currentOnionId) return;
 
     setIsRefreshing(true);
     try {
@@ -100,7 +100,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           recordIds: history.filter(item => item.recordId).map(item => item.recordId),
-          onionId
+          onionId: currentOnionId
         })
       });
       
@@ -114,7 +114,7 @@ export default function App() {
       
       if (data?.success) {
         const updatedHistory = history.map(item => {
-          // 优先通过 recordId 匹配
+          // 1. 优先通过 recordId 匹配
           if (item.recordId && data.results[item.recordId]) {
             return {
               ...item,
@@ -122,14 +122,24 @@ export default function App() {
               feedback: data.results[item.recordId].feedback
             };
           }
-          // 旧记录补丁：通过 [提交时间] 匹配
-          if (data.timeToStatus && data.timeToStatus[item.time]) {
-            return {
-              ...item,
-              recordId: data.timeToStatus[item.time].recordId, // 顺便把 ID 补全
-              status: data.timeToStatus[item.time].status,
-              feedback: data.timeToStatus[item.time].feedback
-            };
+          
+          // 2. 旧记录匹配逻辑优化：标准化时间字符串进行对账
+          if (data.timeToStatus) {
+            const normalizeTime = (t: string) => t.replace(/[\/\-\,\s:]/g, '');
+            const targetTime = normalizeTime(item.time);
+            
+            // 在返回的时间映射中寻找最匹配的一项
+            const matchedKey = Object.keys(data.timeToStatus).find(k => normalizeTime(k) === targetTime);
+            
+            if (matchedKey) {
+              const matchedRes = data.timeToStatus[matchedKey];
+              return {
+                ...item,
+                recordId: matchedRes.recordId,
+                status: matchedRes.status,
+                feedback: matchedRes.feedback
+              };
+            }
           }
           return item;
         });
