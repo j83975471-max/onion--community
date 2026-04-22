@@ -499,7 +499,10 @@ export default function App() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowHistory(false)} className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="relative w-full max-w-md bg-white border-4 border-ink rounded-[32px] overflow-hidden flex flex-col max-h-[80vh] shadow-2xl">
               <div className="p-6 flex justify-between items-center bg-white border-b-2 border-ink">
-                <h3 className="text-xl font-black text-ink uppercase">我的提交记录</h3>
+                <div className="flex items-center gap-2 uppercase">
+                  我的提交记录
+                  {isRefreshing && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                </div>
                 <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-all"><X className="w-6 h-6" /></button>
               </div>
               <div className="p-6 overflow-y-auto">
