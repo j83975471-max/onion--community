@@ -563,23 +563,55 @@ export default function App() {
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowGuide(false)} className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="relative w-full max-w-[360px] bg-white border-[3px] border-ink rounded-[32px] p-6 max-h-[80vh] flex flex-col shadow-2xl">
-              <h2 className="text-xl font-black text-primary mb-4 flex items-center gap-2">⚠️ 任务注意事项</h2>
-              <div className="overflow-y-auto flex-1 space-y-6 pr-1 custom-scrollbar">
+              <h2 className="text-xl font-black text-primary mb-4 flex items-center gap-2">⚠️ 任务参与须知</h2>
+              <div className="overflow-y-auto flex-1 space-y-8 pr-1 custom-scrollbar pb-6">
                 <div>
-                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">关于 48 小时限时任务</h3>
+                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">一、关于 48 小时限时任务</h3>
                   <div className="space-y-3 text-sm text-gray-600 font-bold leading-relaxed">
-                    <div className="flex gap-2"><span className="text-primary">1.</span><p>你的专属 <code className="bg-orange-50 px-1 rounded text-primary">48</code> 小时倒计时从首次打开任务页时开始计算。</p></div>
-                    <div className="flex gap-2"><span className="text-primary">2.</span><p>本活动同时受个人时限与活动截榜时间约。 </p></div>
+                    <div className="flex gap-2"><span className="text-primary">1.</span><p>你的专属 <code className="bg-orange-50 px-1 rounded text-primary">48</code> 小时倒计时从首次打开任务页时开始计算；中途退出、刷新页面或关闭设备，倒计时均不会暂停。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">2.</span><p>本活动同时受“个人 <code className="bg-orange-50 px-1 rounded text-primary">48</code> 小时任务时限”与“活动统一截榜时间”约束，以较早到达的时间为最终截止时间。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">3.</span><p>若在倒计时结束前未完成提交，或活动统一截榜时间已到，则未提交内容不再计入本期结果。</p></div>
                   </div>
                 </div>
+
                 <div>
-                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">关于有效分享</h3>
+                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">二、关于有效分享与防作弊规则</h3>
                   <div className="space-y-3 text-sm text-gray-600 font-bold leading-relaxed">
-                    <div className="flex gap-2"><span className="text-primary">1.</span><p><code className="bg-gray-100 px-1 rounded text-ink">1 张不重复截图 = 1 次有效分享</code>。</p></div>
-                    <div className="flex gap-2"><span className="text-primary">2.</span><p>分享对象需为真实可见场景，不支持“仅自己可见”。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">1.</span><p><code className="bg-gray-100 px-1 rounded text-ink">1 张不重复截图 = 1 次有效分享</code>。同一截图重复上传、同一分享记录重复提交，仅按 <code className="bg-gray-100 px-1 rounded text-ink">1</code> 次计算。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">2.</span><p>分享内容需为用户本人对指定帖子进行的真实端外分享，且分享对象需为真实可见场景，不支持“仅自己可见”。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">3.</span><p>同一分享场景下的连续重复动作不重复计数，包括但不限于同一群聊内重复发送、同一动态反复截图上传等。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">4.</span><p>截图需具备基本真实性与可识别性。若存在重复、拼接、关键字段缺失、明显遮挡、无法判断分享对象或分享时间线等情况，运营有权判定为无效记录。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">5.</span><p>如发现伪造、篡改、搬运他人截图或批量刷量等作弊行为，平台有权取消该用户本期活动资格及奖励进度。</p></div>
                   </div>
                 </div>
-                <div className="h-4" />
+
+                <div>
+                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">三、关于如何交满 10 次截图</h3>
+                  <div className="space-y-3 text-sm text-gray-600 font-bold leading-relaxed">
+                    <div className="flex gap-2"><span className="text-primary">1.</span><p>为保证上传稳定性，每次表单最多支持选择 <code className="bg-gray-100 px-1 rounded text-ink">2</code> 张图片。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">2.</span><p>用户可多次重复提交表单；若需冲刺 <code className="bg-gray-100 px-1 rounded text-ink">10</code> 次分享，可分批提交（例如提交 <code className="bg-gray-100 px-1 rounded text-ink">5</code> 次，每次 <code className="bg-gray-100 px-1 rounded text-ink">2</code> 张）。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">3.</span><p>系统以用户填写的【洋葱 ID】作为战绩合并主键进行统计，请务必准确填写。</p></div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">四、关于抢排期与实物发奖</h3>
+                  <div className="space-y-3 text-sm text-gray-600 font-bold leading-relaxed">
+                    <div className="flex gap-2"><span className="text-primary">1.</span><p>置顶与圈主名额按用户“第 <code className="bg-orange-50 px-1 rounded text-primary">3</code> 次成功提交有效截图”的时间进行排序，越早达标，越有机会抢到前排资源。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">2.</span><p>学习类奖励按内容所属学段独立排名，不可跨学段占用名额。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">3.</span><p>活动结束后，若用户达成中性笔奖励，将通过站内消息下发地址收集通知；用户需在截止时间内填写收货信息，逾期视为放弃。</p></div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-black text-ink mb-3 border-l-4 border-primary pl-3">五、合规与数据处理说明</h3>
+                  <div className="space-y-3 text-sm text-gray-600 font-bold leading-relaxed">
+                    <div className="flex gap-2"><span className="text-primary">1.</span><p>本活动提交阶段仅收集活动核验所需的最小必要信息，默认使用【洋葱 ID + 截图记录】进行资格核验与战绩合并。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">2.</span><p>用户提交的截图仅用于判断是否完成有效分享，不作为对外传播素材使用；如需作为案例展示，须再次脱敏处理。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">3.</span><p>活动结束后，相关敏感信息按最小必要原则保留，并在发奖完成及客诉处理结束后及时清理。</p></div>
+                    <div className="flex gap-2"><span className="text-primary">4.</span><p>活动执行过程中，不主动引导用户公开披露真实姓名、学校、家庭住址等额外敏感个人信息。</p></div>
+                  </div>
+                </div>
               </div>
               <button onClick={() => setShowGuide(false)} className="brutal-btn mt-6 py-4 text-lg">我知道了，火速开冲</button>
             </motion.div>
