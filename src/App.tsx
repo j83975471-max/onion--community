@@ -106,55 +106,39 @@ export default function App() {
       
       let data;
       try {
-        data = await res.json();
+        const responseText = await res.text();
+        if (!responseText) throw new Error("Empty response from server");
+        data = JSON.parse(responseText);
+        
+        if (data?.success) {
+          const feishuList = data.sequence || [];
+          const updatedHistory = history.map((item, index) => {
+            // 1. 新记录精准对齐 (通过 ID)
+            if (item.recordId && data.results?.[item.recordId]) {
+              const remoteResult = data.results[item.recordId];
+              return { ...item, status: remoteResult.status, feedback: remoteResult.feedback };
+            }
+            
+            // 2. 老记录物理对位 (按顺序)
+            const matchedByOrder = feishuList[index];
+            if (matchedByOrder) {
+              return {
+                ...item,
+                recordId: matchedByOrder.recordId,
+                status: matchedByOrder.status,
+                feedback: matchedByOrder.feedback
+              };
+            }
+            return item;
+          });
+
+          if (JSON.stringify(updatedHistory) !== JSON.stringify(history)) {
+            setHistory(updatedHistory);
+            localStorage.setItem(STORAGE_KEYS.SUBMIT_HISTORY, JSON.stringify(updatedHistory));
+          }
+        }
       } catch (e) {
         console.error('解析状态数据失败:', e);
-        return;
-      }
-      
-      if (data?.success) {
-        // 1. 准备飞书返回的有序数组 (用于顺序匹配)
-        const feishuItems = Object.values(data.results || {}).sort((a: any, b: any) => {
-          return b.recordId.localeCompare(a.recordId);
-        });
-
-        const updatedHistory = history.map((item, index) => {
-          // --- 第一步：精确 ID 匹配 (新提交的记录) ---
-          if (item.recordId && data.results[item.recordId]) {
-            return {
-              ...item,
-              status: data.results[item.recordId].status,
-              feedback: data.results[item.recordId].feedback
-            };
-          }
-          
-          // --- 第二步：精确时间点匹配 (优化后提交的数据，分秒不差) ---
-          if (data.timeToStatus && data.timeToStatus[item.time]) {
-            const matchedRes = data.timeToStatus[item.time];
-            return {
-              ...item,
-              recordId: matchedRes.recordId, // 顺便补全 ID
-              status: matchedRes.status,
-              feedback: matchedRes.feedback
-            };
-          }
-
-          // --- 第三步：顺序兜底匹配 (彻底解决老记录时间差几秒的问题) ---
-          const matchedByOrder = feishuItems[index]; 
-          if (matchedByOrder) {
-            return {
-              ...item,
-              recordId: matchedByOrder.recordId,
-              status: matchedByOrder.status,
-              feedback: matchedByOrder.feedback
-            };
-          }
-          
-          return item;
-        });
-
-        setHistory(updatedHistory);
-        localStorage.setItem(STORAGE_KEYS.SUBMIT_HISTORY, JSON.stringify(updatedHistory));
       }
     } catch (err) {
       console.error('刷新状态失败:', err);
