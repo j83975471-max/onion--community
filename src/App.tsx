@@ -113,8 +113,13 @@ export default function App() {
       }
       
       if (data?.success) {
-        const updatedHistory = history.map(item => {
-          // 1. 优先通过 recordId 匹配
+        // 1. 准备飞书返回的有序数组 (用于顺序匹配)
+        const feishuItems = Object.values(data.results || {}).sort((a: any, b: any) => {
+          return b.recordId.localeCompare(a.recordId);
+        });
+
+        const updatedHistory = history.map((item, index) => {
+          // --- 第一步：精确 ID 匹配 (新提交的记录) ---
           if (item.recordId && data.results[item.recordId]) {
             return {
               ...item,
@@ -123,26 +128,31 @@ export default function App() {
             };
           }
           
-          // 2. 旧记录匹配逻辑优化：标准化时间字符串进行对账
-          if (data.timeToStatus) {
-            const normalizeTime = (t: string) => t.replace(/[\/\-\,\s:]/g, '');
-            const targetTime = normalizeTime(item.time);
-            
-            // 在返回的时间映射中寻找最匹配的一项
-            const matchedKey = Object.keys(data.timeToStatus).find(k => normalizeTime(k) === targetTime);
-            
-            if (matchedKey) {
-              const matchedRes = data.timeToStatus[matchedKey];
-              return {
-                ...item,
-                recordId: matchedRes.recordId,
-                status: matchedRes.status,
-                feedback: matchedRes.feedback
-              };
-            }
+          // --- 第二步：精确时间点匹配 (优化后提交的数据，分秒不差) ---
+          if (data.timeToStatus && data.timeToStatus[item.time]) {
+            const matchedRes = data.timeToStatus[item.time];
+            return {
+              ...item,
+              recordId: matchedRes.recordId, // 顺便补全 ID
+              status: matchedRes.status,
+              feedback: matchedRes.feedback
+            };
           }
+
+          // --- 第三步：顺序兜底匹配 (彻底解决老记录时间差几秒的问题) ---
+          const matchedByOrder = feishuItems[index]; 
+          if (matchedByOrder) {
+            return {
+              ...item,
+              recordId: matchedByOrder.recordId,
+              status: matchedByOrder.status,
+              feedback: matchedByOrder.feedback
+            };
+          }
+          
           return item;
         });
+
         setHistory(updatedHistory);
         localStorage.setItem(STORAGE_KEYS.SUBMIT_HISTORY, JSON.stringify(updatedHistory));
       }
@@ -189,12 +199,13 @@ export default function App() {
     setIsSubmitting(true);
     
     try {
+      const now = new Date().toLocaleString();
       const response = await fetch('/api/submit-to-feishu', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           onionId,
-          timestamp: new Date().toLocaleString(),
+          timestamp: now,
           images,
           count: images.length
         })
@@ -215,7 +226,7 @@ export default function App() {
       const newEntry = {
         id: Date.now(),
         recordId: result?.record_id,
-        time: new Date().toLocaleString(),
+        time: now,
         imageCount: images.length,
         status: '待核验',
         feedback: ''

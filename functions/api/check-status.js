@@ -28,41 +28,32 @@ export async function onRequestPost(context) {
     if (authData.code !== 0) throw new Error("飞书鉴权失败");
     const accessToken = authData.tenant_access_token;
 
-    // 2. 使用搜索接口 (比 URL Filter 更稳定)
-    const searchUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${env.FEISHU_BITABLE_APP_TOKEN}/tables/${env.FEISHU_BITABLE_TABLE_ID}/records/search`;
+    // 2. 构造查询 (回归最兼容的 GET 模式)
+    const baseUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${env.FEISHU_BITABLE_APP_TOKEN}/tables/${env.FEISHU_BITABLE_TABLE_ID}/records`;
     
-    const searchRes = await fetch(searchUrl, {
-      method: "POST",
-      headers: { 
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        filter: {
-          conjunction: "and",
-          conditions: [
-            {
-              field_name: "洋葱ID",
-              operator: "is",
-              value: [String(onionId).trim()]
-            }
-          ]
-        },
-        automatic_fields: true
-      })
+    // 使用 CurrentValue 语法，这是多维表格过滤器最标准的写法
+    const filter = encodeURIComponent(`CurrentValue.[洋葱ID]=="${String(onionId).trim()}"`);
+    const url = `${baseUrl}?filter=${filter}&page_size=100`;
+
+    const recordRes = await fetch(url, {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${accessToken}` },
     });
 
-    const recordData = await searchRes.json();
-    if (recordData.code !== 0) throw new Error(`搜索记录失败: ${recordData.msg}`);
+    const recordData = await recordRes.json();
+    if (recordData.code !== 0) throw new Error(`查询记录失败: ${recordData.msg}`);
 
-    // 3. 解析结果
+    // 3. 解析结果 (增强字段容错)
     const results = {};
     const timeToStatus = {}; 
 
     if (recordData.data && recordData.data.items) {
       recordData.data.items.forEach(item => {
         const fields = item.fields;
-        let feedbackText = fields["运营评语"] || "";
+        
+        // 尝试匹配不同的评语列名
+        let feedbackText = fields["运营评语"] || fields["修改意见"] || fields["反馈"] || "";
+        
         if (Array.isArray(feedbackText)) {
           feedbackText = feedbackText.map(t => t.text || t.text_content || "").join("");
         } else if (typeof feedbackText === 'object') {
@@ -71,13 +62,13 @@ export async function onRequestPost(context) {
 
         const res = {
           recordId: item.record_id,
-          status: fields["审核状态"] || "待核验",
-          feedback: feedbackText
+          status: fields["审核状态"] || fields["状态"] || "待核验",
+          feedback: String(feedbackText).trim()
         };
 
         results[item.record_id] = res;
         if (fields["提交时间"]) {
-          timeToStatus[fields["提交时间"]] = res;
+          timeToStatus[String(fields["提交时间"])] = res;
         }
       });
     }
