@@ -10,7 +10,9 @@ import {
   CheckCircle2,
   Loader2,
   HelpCircle,
-  Smartphone
+  Smartphone,
+  ArrowRight,
+  ArrowDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -251,7 +253,7 @@ export default function App() {
             className="flex items-center gap-2 bg-black/80 px-4 py-2 rounded-full"
           >
             <Clock className="w-4 h-4 text-accent animate-pulse" />
-            <span className="text-white text-[10px] font-bold whitespace-nowrap flex items-center gap-1">
+            <span className="text-white text-sm font-bold whitespace-nowrap flex items-center gap-1">
               {isExpired ? '活动已失效' : (
                 <>
                   <span>专属福利掉落，抢位倒计时中！</span>
@@ -269,7 +271,7 @@ export default function App() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1 }}
-            className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-1.5 rounded-xl text-white/90 text-[10px] font-black uppercase tracking-widest"
+            className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-1.5 rounded-xl text-white/90 text-xs font-black uppercase tracking-widest"
           >
             统一截榜时间：2026年4月24日 12:00
           </motion.div>
@@ -292,15 +294,15 @@ export default function App() {
             燃爆社区，优秀的作品值得被更多人看见！
           </motion.div>
 
-          <motion.button
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            onClick={() => setShowGuide(true)}
-            className="mt-4 bg-white/20 hover:bg-white/30 text-white backdrop-blur-md border border-white/30 px-3 py-1.5 rounded-full text-[10px] font-bold flex items-center gap-1 mx-auto transition-all active:scale-95"
-          >
-            ⚠️ <span className="underline underline-offset-2">参与须知</span>
-          </motion.button>
+            <motion.button
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              onClick={() => setShowGuide(true)}
+              className="mt-4 bg-white/20 hover:bg-white/30 text-white backdrop-blur-md border border-white/30 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 mx-auto transition-all active:scale-95"
+            >
+              ⚠️ <span className="underline underline-offset-2">参与须知</span>
+            </motion.button>
         </div>
       </div>
 
@@ -344,26 +346,35 @@ export default function App() {
                   <HelpCircle className="w-6 h-6 text-primary" />
                   <h2 className="text-xl font-black text-primary uppercase">如何参与活动</h2>
                 </div>
-                <div className="space-y-2 mt-2">
+                <div className="space-y-0 mt-2">
                   <StepItem 
-                    number="1" 
-                    title="找到你想分享的帖子，点击右上角保存图片或选择分享" 
-                    desc="生成帖子分享图片二维码，或直接选择QQ/微信好友/QQ空间/朋友圈点击分享。" 
+                    number="第一步" 
+                    title="找到你想分享的帖子" 
+                    desc="在社区内找到想要安利给小伙伴的帖子（自己的也可以！），点击右上角生成分享图片，或直接选择分享平台" 
                   />
+                  <div className="flex justify-center py-2">
+                    <ArrowDown className="w-5 h-5 text-primary/30 animate-bounce" />
+                  </div>
                   <StepItem 
-                    number="2" 
-                    title="多阵地进行分享" 
-                    desc="将帖子分享至微信/QQ好友或群聊、朋友圈、QQ空间。" 
+                    number="第二步" 
+                    title="多平台进行分享" 
+                    desc="将帖子分享给QQ或微信或其他社交平台好友/群聊，或朋友圈、QQ空间等公开社交平台" 
                   />
+                   <div className="flex justify-center py-2">
+                    <ArrowDown className="w-5 h-5 text-primary/30 animate-bounce" />
+                  </div>
                   <StepItem 
-                    number="3" 
+                    number="第三步" 
                     title="保存全屏截图" 
-                    desc="分享完毕后截图保存你的分享阵地！比如你在朋友圈分享的就截朋友圈截图，在群聊分享的就截群聊图片哦～" 
+                    desc="分享完成后，在对应分享页面进行截图（如分享给好友就截图聊天框，分享至朋友圈就截图朋友圈内容）～" 
                   />
+                   <div className="flex justify-center py-2">
+                    <ArrowDown className="w-5 h-5 text-primary/30 animate-bounce" />
+                  </div>
                   <StepItem 
-                    number="4" 
-                    title="上传 ID 与截图提交" 
-                    desc="在页面最下方提交核验区域，输入你的洋葱ID，并上传对应的分享截图，点击提交、显示成功即可！" 
+                    number="第四步" 
+                    title="上传截图提交审核" 
+                    desc="在本页面底部“立即提交核验”处输入洋葱ID并上传截图，点击提交成功即可！🎊" 
                     isLast 
                   />
                 </div>
@@ -378,8 +389,8 @@ export default function App() {
                   <RuleItem icon="👀" text={<span><b>要真实发出去哦！</b> 分享的内容绝对不能“仅自己可见”哦～</span>} />
                   <RuleItem icon="🚫" text={<span><b>不要拿同一张图糊弄！</b> 每次截图分享的好友/群聊/平台必须不同，禁止同一张截图反复上传。</span>} />
                 </ul>
-                <div className="mt-4 p-3 bg-accent/20 rounded-xl text-[10px] text-ink/80 leading-relaxed font-bold border-l-4 border-accent">
-                  💡 1 张不重复的有效截图 = 1 次有效分享，一次性可提交2张截图。想冲刺 10 次拿大奖？请分多次提交表单哦！
+                <div className="mt-4 p-3 bg-accent/20 rounded-xl text-xs text-ink/80 leading-relaxed font-bold border-l-4 border-accent">
+                  💡 1 张不重复的有效截图 = 1 次有效分享，支持连交2张。想冲大奖？请分多次提交哦！
                 </div>
               </section>
             </div>
@@ -393,7 +404,7 @@ export default function App() {
 
                 <div className="mb-6 flex flex-col gap-2">
                   <div className="flex justify-between items-end">
-                    <span className="text-xs font-black text-ink">当前提交进度：<b className="text-lg">{submitCount}</b>/10</span>
+                    <span className="text-sm font-black text-ink">当前提交进度：<b className="text-lg">{submitCount}</b>/10</span>
                   </div>
                   <div className="h-4 bg-gray-100 rounded-full overflow-hidden border-2 border-ink shadow-inner">
                     <motion.div 
@@ -402,24 +413,24 @@ export default function App() {
                       className="h-full bg-gradient-to-r from-accent to-primary"
                     />
                   </div>
-                  <p className="text-[10px] text-red-600 font-bold mt-1">⚠️ 提示：此处仅记录表单提交次数，不代表最终有效分享次数。最终有效战绩以截榜后人工核验为准。</p>
+                  <p className="text-xs text-red-600 font-bold mt-1">⚠️ 提示：此处仅记录表单提交次数，不代表最终有效。战绩以结算核验为准。</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-ink flex items-center gap-1">洋葱 ID</label>
+                    <label className="text-sm font-black text-ink flex items-center gap-1">洋葱 ID</label>
                     <input 
                       type="text" 
                       value={onionId}
                       onChange={(e) => setOnionId(e.target.value)}
                       placeholder="请输入您的洋葱ID"
-                      className="input-brutal"
+                      className="input-brutal text-base"
                     />
-                    <p className="text-[10px] text-gray-400 font-normal">不知道 ID？请前往 App - 我的 - 点击头像查看哦</p>
+                    <p className="text-xs text-gray-400 font-normal">不知道 ID？在 App - 我的 - 点击头像查看</p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-ink">上传分享截图 <span className="font-normal text-gray-400">(单次限2张)</span></label>
+                    <label className="text-sm font-black text-ink">上传分享截图 <span className="font-normal text-gray-400">(单次限2张)</span></label>
                     <div className="grid grid-cols-2 gap-4">
                       {images.map((img, idx) => (
                         <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-ink shadow-md">
@@ -437,7 +448,7 @@ export default function App() {
                       {images.length < 2 && (
                         <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50 cursor-pointer hover:bg-orange-50 hover:border-primary active:scale-95 transition-all group">
                           <Camera className="w-8 h-8 text-gray-300 group-hover:text-primary mb-1 transition-colors" />
-                          <span className="text-[10px] font-black text-gray-400 group-hover:text-primary">添加截图</span>
+                          <span className="text-xs font-black text-gray-400 group-hover:text-primary">添加截图</span>
                           <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" />
                         </label>
                       )}
@@ -501,9 +512,9 @@ export default function App() {
                 <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-all"><X className="w-6 h-6" /></button>
               </div>
               <div className="p-6 overflow-y-auto">
-                <div className="bg-bg-light p-4 rounded-xl border-2 border-primary/20 text-[10px] text-primary font-black mb-6 flex justify-between items-center">
+                <div className="bg-bg-light p-4 rounded-xl border-2 border-primary/20 text-xs text-primary font-black mb-6 flex justify-between items-center">
                   <span>💡 进度已成功提交！葱葱将于8h内进行审核，给出审核结果和修改意见哦～请稍后再来看看吧！</span>
-                  {isRefreshing && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {isRefreshing && <Loader2 className="w-4 h-4 animate-spin" />}
                 </div>
                 <div className="space-y-4">
                   {history.length === 0 ? <p className="text-center text-gray-300 py-10 font-bold">还没有提交记录，快去分享吧~</p> : history.map(item => (
@@ -585,10 +596,10 @@ function RewardCard({ rank, title, limit, desc, color }: any) {
       <span className="text-3xl mt-1">{rank}</span>
       <div className="text-left">
         <div className="flex flex-wrap items-center gap-1 mb-1">
-          <span className="font-black text-ink text-sm">{title}</span>
-          <span className="text-[8px] font-black px-1.5 py-0.5 bg-white border border-ink/10 rounded">{limit}</span>
+          <span className="font-black text-ink text-base">{title}</span>
+          <span className="text-[10px] font-black px-1.5 py-0.5 bg-white border border-ink/10 rounded">{limit}</span>
         </div>
-        <p className="text-[10px] text-gray-500 font-bold leading-relaxed">{desc}</p>
+        <p className="text-xs text-gray-500 font-bold leading-relaxed">{desc}</p>
       </div>
     </div>
   );
@@ -598,20 +609,19 @@ function RuleItem({ icon, text }: { icon: string; text: any }) {
   return (
     <li className="flex gap-3 items-start">
       <span className="text-xl shrink-0">{icon}</span>
-      <span className="text-xs font-bold text-gray-600 leading-normal">{text}</span>
+      <span className="text-sm font-bold text-gray-600 leading-normal">{text}</span>
     </li>
   );
 }
 
 function StepItem({ number, title, desc, isLast }: { number: string; title: string; desc: string; isLast?: boolean }) {
   return (
-    <div className="flex gap-4 items-start relative">
-      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-black italic shadow-[2px_2px_0_var(--color-ink)] z-10 text-sm">{number}</div>
-      <div className="flex-1 pb-6">
-        <h4 className="text-[13px] font-black text-ink mb-1">{title}</h4>
-        <p className="text-[10px] text-gray-500 font-bold leading-normal">{desc}</p>
+    <div className="flex gap-4 items-center relative bg-gray-50 p-4 rounded-2xl border-2 border-ink/5 group hover:border-primary/20 transition-all">
+      <div className="flex-shrink-0 px-3 py-1 rounded-lg bg-primary text-white flex items-center justify-center font-black italic shadow-[3px_3px_0_var(--color-ink)] z-10 text-xs whitespace-nowrap">{number}</div>
+      <div className="flex-1">
+        <h4 className="text-sm md:text-base font-black text-ink mb-0.5">{title}</h4>
+        <p className="text-xs text-gray-400 font-bold leading-tight">{desc}</p>
       </div>
-      {!isLast && <div className="absolute left-[13px] top-7 bottom-0 w-[1px] bg-gray-100 border-l border-dashed border-gray-300" />}
     </div>
   );
 }

@@ -29,33 +29,59 @@ export async function onRequestPost(context) {
     const authData = await authRes.json();
     const accessToken = authData.tenant_access_token;
 
-    // 2. 获取数据 (使用标准的 Filter，最稳)
-    const filter = encodeURIComponent(`CurrentValue.[洋葱ID]=="${String(onionId).trim()}"`);
-    // 强制按创建时间倒序拉取，保证顺序对位匹配的准确性
-    const url = `https://open.feishu.cn/open-apis/bitable/v1/apps/${env.FEISHU_BITABLE_APP_TOKEN}/tables/${env.FEISHU_BITABLE_TABLE_ID}/records?filter=${filter}&page_size=100`;
+    // 2. 获取数据
+    const filterString = `CurrentValue.[洋葱ID]=="${String(onionId).trim()}"`;
+    const filter = encodeURIComponent(filterString);
+    let url = `https://open.feishu.cn/open-apis/bitable/v1/apps/${env.FEISHU_BITABLE_APP_TOKEN}/tables/${env.FEISHU_BITABLE_TABLE_ID}/records?filter=${filter}`;
 
-    const recordRes = await fetch(url, {
+    let recordRes = await fetch(url, {
       method: "GET",
       headers: { "Authorization": `Bearer ${accessToken}` },
     });
-    const recordData = await recordRes.json();
+    let recordData = await recordRes.json();
+
+    // 如果过滤查询报错，启动“全量拉取”兜底策略
+    if (recordData.code !== 0) {
+      url = `https://open.feishu.cn/open-apis/bitable/v1/apps/${env.FEISHU_BITABLE_APP_TOKEN}/tables/${env.FEISHU_BITABLE_TABLE_ID}/records?page_size=100`;
+      recordRes = await fetch(url, {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${accessToken}` },
+      });
+      recordData = await recordRes.json();
+    }
 
     // 3. 整理结果
     const results = {};
     const sequence = [];
 
     if (recordData.data && recordData.data.items) {
-      // 飞书默认返回可能不是绝对倒序，我们在代码里手动按记录生成顺序排一下 (从新到旧)
-      const items = recordData.data.items.sort((a, b) => b.record_id.localeCompare(a.record_id));
+      // 内存手动过滤（全员适配模式）
+      const rawItems = recordData.data.items;
+      const filteredItems = rawItems.filter(item => {
+        const fid = item.fields["洋葱ID"];
+        return String(fid).trim() === String(onionId).trim();
+      });
+
+      // 排序（从新到旧）
+      const items = filteredItems.sort((a, b) => b.record_id.localeCompare(a.record_id));
       
       items.forEach(item => {
         const fields = item.fields;
-        let feedback = fields["运营评语"] || fields["修改意见"] || "";
+        
+        // 模糊枚举：支持各种可能的列名
+        const getVal = (keywords) => {
+          const key = Object.keys(fields).find(k => keywords.some(kw => k.includes(kw)));
+          return key ? fields[key] : null;
+        };
+
+        const status = getVal(['审核状态', '状态', '结果', '核验']) || "待核验";
+        let feedback = getVal(['运营评语', '修改意见', '评论', '反馈', '建议']) || "";
+        
         if (Array.isArray(feedback)) feedback = feedback.map(t => t.text || "").join("");
 
         const res = {
           recordId: item.record_id,
-          status: fields["审核状态"] || "待核验",
+          status: String(status),
           feedback: String(feedback).trim()
         };
         results[item.record_id] = res;
